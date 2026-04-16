@@ -60,7 +60,7 @@ export default function PriceChart({ priceHistory, currentPrice, averagePrice }:
               color: "#f9fafb",
               fontSize: 13,
             }}
-            formatter={(value: number) => [`$${value}`, "Price"]}
+            formatter={(value) => [`$${value}`, "Price"]}
           />
           <ReferenceLine
             y={averagePrice}
