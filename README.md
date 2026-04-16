@@ -1,5 +1,7 @@
 # Flight Price Advisor
 
+**Live demo: [flight-price-advisor.vercel.app](https://flight-price-advisor.vercel.app/)**
+
 A full-stack web app that helps you decide **whether to buy plane tickets now or wait for a better fare**. Track multiple trips, get smart buy-or-wait recommendations backed by a multi-factor scoring engine, and see real price trends from Google Flights.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black) ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue) ![Tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8)
