@@ -80,13 +80,18 @@ export default function TripCard({ trip, onDelete }: Props) {
   }, [trip.id, trip.origin, trip.destination, trip.departureDate, trip.returnDate, trip.cabinClass, trip.travelers, trip.nonstopOnly]);
 
   const result: RecommendationResult = useMemo(() => {
-    const base = generateRecommendation(trip);
-    // Override with live price if available
     if (live.price !== null) {
-      return { ...base, currentBestPrice: live.price };
+      return generateRecommendation(trip, {
+        currentPrice: live.price,
+        priceHistory: live.realHistory,
+        typicalPriceRange: live.typicalPriceRange,
+        source: live.source === "serpapi" || live.source === "travelpayouts" || live.source === "duffel"
+          ? live.source
+          : "simulated",
+      });
     }
-    return base;
-  }, [trip, live.price]);
+    return generateRecommendation(trip);
+  }, [trip, live.price, live.realHistory, live.typicalPriceRange, live.source]);
 
   const depDate = new Date(trip.departureDate);
   const retDate = new Date(trip.returnDate);

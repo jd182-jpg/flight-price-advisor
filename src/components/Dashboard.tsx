@@ -143,7 +143,7 @@ export default function Dashboard() {
       {/* Footer info */}
       <div className="text-center text-xs text-gray-400 dark:text-gray-500 py-8 border-t border-gray-100 dark:border-gray-800">
         <p className="mb-1">
-          Prices are currently simulated for development. Connect a flight API (Amadeus, Skyscanner, Google Flights) for live data.
+          Live prices via Google Flights (SerpAPI) with Travelpayouts &amp; Duffel fallbacks. Simulator used when all APIs fail or lack data for a route.
         </p>
         <p>
           The recommendation engine considers booking window, seasonality, price trends, route type, and your risk tolerance.

@@ -76,32 +76,64 @@ function analyzePriceTrend(priceHistory: PricePoint[]): {
   return { trend, recentAvg, overallAvg, low, high, volatility };
 }
 
-export function generateRecommendation(trip: Trip): RecommendationResult {
+export interface RecommendationOverrides {
+  /** Real current price to use instead of the simulated one (already per-person) */
+  currentPrice?: number;
+  /** Real price history points for trend analysis */
+  priceHistory?: Array<{ date: string; price: number }>;
+  /** Google Flights' typical price range [low, high] — used as a more authoritative reference when available */
+  typicalPriceRange?: [number, number] | null;
+  /** Data source label so the engine knows whether it's using real data */
+  source?: "serpapi" | "travelpayouts" | "duffel" | "simulated";
+}
+
+export function generateRecommendation(
+  trip: Trip,
+  overrides?: RecommendationOverrides
+): RecommendationResult {
   const today = new Date();
   const depDate = new Date(trip.departureDate);
   const daysUntilDeparture = Math.floor((depDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-  // Get price history and current prices
-  const priceHistory = trip.priceHistory.length > 0
-    ? trip.priceHistory
-    : generatePriceHistory(trip.origin, trip.destination, trip.departureDate, trip.cabinClass, trip.nonstopOnly);
+  // Build priceHistory from overrides if available, otherwise fall back to trip history or simulated
+  const rawHistory = overrides?.priceHistory && overrides.priceHistory.length > 0
+    ? overrides.priceHistory.map((h) => ({ date: h.date, price: h.price, airline: "", source: overrides.source ?? "live" }))
+    : trip.priceHistory.length > 0
+      ? trip.priceHistory
+      : generatePriceHistory(trip.origin, trip.destination, trip.departureDate, trip.cabinClass, trip.nonstopOnly);
 
-  const flights = searchFlights({
-    origin: trip.origin,
-    destination: trip.destination,
-    departureDate: trip.departureDate,
-    returnDate: trip.returnDate,
-    nonstopOnly: trip.nonstopOnly,
-    cabinClass: trip.cabinClass,
-    travelers: trip.travelers,
-    preferredAirlines: trip.preferredAirlines,
-  });
+  // Determine current best price: overrides win, then simulated search
+  let currentBestPrice: number;
+  if (overrides?.currentPrice !== undefined) {
+    currentBestPrice = overrides.currentPrice;
+  } else {
+    const flights = searchFlights({
+      origin: trip.origin,
+      destination: trip.destination,
+      departureDate: trip.departureDate,
+      returnDate: trip.returnDate,
+      nonstopOnly: trip.nonstopOnly,
+      cabinClass: trip.cabinClass,
+      travelers: trip.travelers,
+      preferredAirlines: trip.preferredAirlines,
+    });
+    currentBestPrice = flights.length > 0
+      ? flights[0].price / trip.travelers
+      : simulatePrice(trip.origin, trip.destination, trip.departureDate, trip.cabinClass, trip.nonstopOnly, daysUntilDeparture);
+  }
+  currentBestPrice = Math.round(currentBestPrice);
 
-  const currentBestPrice = flights.length > 0
-    ? flights[0].price / trip.travelers
-    : simulatePrice(trip.origin, trip.destination, trip.departureDate, trip.cabinClass, trip.nonstopOnly, daysUntilDeparture);
+  // Use Google's typical range as the authoritative reference when available
+  const priceAnalysisBase = analyzePriceTrend(rawHistory);
+  const priceAnalysis = overrides?.typicalPriceRange
+    ? {
+        ...priceAnalysisBase,
+        low: overrides.typicalPriceRange[0],
+        high: overrides.typicalPriceRange[1],
+        overallAvg: Math.round((overrides.typicalPriceRange[0] + overrides.typicalPriceRange[1]) / 2),
+      }
+    : priceAnalysisBase;
 
-  const priceAnalysis = analyzePriceTrend(priceHistory);
   const holiday = isHolidayAdjacent(trip.departureDate);
   const leisure = isLeisureRoute(trip.origin, trip.destination);
 
